@@ -192,7 +192,7 @@ app.post("/whatsapp/lookup", express.urlencoded({ extended: false, limit: "1kb" 
     return res.json({ phoneNumber: sender.phoneNumber, status: sender.status, online: sender.online });
   } catch (error) {
     console.error("WhatsApp sender lookup failed:", error.message);
-    return res.status(502).json({ error: "Could not read the WhatsApp number from Twilio. Check the Twilio credentials in Render." });
+    return res.status(502).json({ error: error.message || "Twilio sender lookup failed. Check the Twilio credentials and sender registration." });
   }
 });
 app.get("/health", (_req, res) => res.json({
