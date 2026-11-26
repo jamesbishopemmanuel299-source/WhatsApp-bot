@@ -3,10 +3,13 @@ import WebSocket from "ws";
 const API = "https://api.derivws.com";
 
 export class DerivClient {
-  constructor({ token, appId, accountId }) {
+  constructor({ token, appId, accountId, demoOnly = true, liveEnabled = false }) {
     this.token = token;
     this.appId = appId;
     this.accountId = accountId;
+    this.demoOnly = demoOnly;
+    this.liveEnabled = liveEnabled;
+    this.accountMode = null;
     this.ws = null;
     this.pending = new Map();
     this.nextId = 1;
@@ -24,8 +27,16 @@ export class DerivClient {
       throw new Error(body?.errors?.[0]?.message || "Could not obtain Deriv WebSocket session");
     }
 
+    const wsUrl = new URL(body.data.url);
+    const isDemo = wsUrl.pathname.endsWith("/demo");
+    const isReal = wsUrl.pathname.endsWith("/real");
+    if (!isDemo && !isReal) throw new Error("Deriv returned an unrecognized account endpoint.");
+    if (this.demoOnly && !isDemo) throw new Error("DEMO_ONLY is enabled, but the configured Deriv account is not a demo account. No trade was placed.");
+    if (isReal && !this.liveEnabled) throw new Error("Live trading is disabled by server configuration.");
+    this.accountMode = isDemo ? "demo" : "real";
+
     await new Promise((resolve, reject) => {
-      const socket = new WebSocket(body.data.url);
+      const socket = new WebSocket(wsUrl.toString());
       const timer = setTimeout(() => reject(new Error("Deriv connection timed out")), 15000);
       socket.once("open", () => {
         clearTimeout(timer);
