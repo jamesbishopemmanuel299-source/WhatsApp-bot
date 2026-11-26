@@ -1,10 +1,33 @@
 services:
   - type: web
-    name: emzaro-trading-ai
+    name: emzaro-whatsapp-bot
     runtime: node
+    plan: free
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    disk:
+      name: bot-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: "20"
+      - key: DB_PATH
+        value: /opt/render/project/src/data/bot.db
+      - key: DEMO_ONLY
+        value: "true"
+      - key: ENABLE_LIVE_TRADING
+        value: "false"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OWNER_TELEGRAM_CHAT_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DERIV_ACCESS_TOKEN
+        sync: false
+      - key: DERIV_ACCOUNT_ID
+        sync: false
+      - key: DERIV_APP_ID
+        sync: false
