@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import Database from "better-sqlite3";
 import { DerivClient } from "./src/deriv.js";
@@ -166,12 +167,41 @@ async function handleCommand(chatId, message) {
   return "Unknown command. Send /help to see available commands.";
 }
 
+app.get("/whatsapp", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.type("html").send("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>WhatsApp Number Lookup</title><style>body{font-family:system-ui;background:#101714;color:#eef8f1;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px;box-sizing:border-box}.card{max-width:440px;width:100%;background:#1b2821;border:1px solid #385343;border-radius:18px;padding:26px;box-sizing:border-box}h1{font-size:24px}p{color:#b8c9be;line-height:1.5}input,button{width:100%;box-sizing:border-box;padding:14px;border-radius:10px;font-size:16px;margin-top:12px}input{background:#101714;color:white;border:1px solid #52695a}button{background:#25c46a;color:#062412;border:0;font-weight:700;cursor:pointer}.result{margin-top:18px;padding:14px;background:#101714;border-radius:10px;overflow-wrap:anywhere}.number{font-size:24px;font-weight:700}.muted{font-size:13px;color:#9eb0a4}</style></head><body><main class=\"card\"><h1>Your WhatsApp Business number</h1><p>Enter the private lookup key saved in your Render environment. Your Twilio credentials remain on the server.</p><form id=\"lookup\"><label for=\"key\">Private lookup key</label><input id=\"key\" name=\"key\" type=\"password\" autocomplete=\"current-password\" required><button type=\"submit\">Find my WhatsApp number</button></form><div id=\"result\" class=\"result\" hidden></div><p class=\"muted\">This only finds a sender already registered in your Twilio account. It does not register a new number.</p></main><script>const form=document.getElementById(\"lookup\"),result=document.getElementById(\"result\");form.addEventListener(\"submit\",async e=>{e.preventDefault();result.hidden=false;result.textContent=\"Checking Twilio…\";try{const response=await fetch(\"/whatsapp/lookup\",{method:\"POST\",headers:{\"Content-Type\":\"application/x-www-form-urlencoded\"},body:new URLSearchParams({key:document.getElementById(\"key\").value})});const data=await response.json();if(!response.ok)throw new Error(data.error||\"Lookup failed\");result.innerHTML=\"\";const number=document.createElement(\"div\");number.className=\"number\";number.textContent=data.phoneNumber;const status=document.createElement(\"div\");status.textContent=\"Status: \"+data.status;result.append(number,status)}catch(error){result.textContent=error.message}});</script></body></html>");
+});
+
+const lookupAttempts = new Map();
+app.post("/whatsapp/lookup", express.urlencoded({ extended: false, limit: "1kb" }), async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  const configuredKey = String(env.WHATSAPP_LOOKUP_KEY || "");
+  const suppliedKey = String(req.body?.key || "");
+  if (!configuredKey) return res.status(503).json({ error: "Set WHATSAPP_LOOKUP_KEY in Render Environment, then redeploy." });
+  const now = Date.now();
+  const ip = String(req.ip || "unknown");
+  const attempts = lookupAttempts.get(ip) || { count: 0, resetAt: now + 300000 };
+  if (now > attempts.resetAt) { attempts.count = 0; attempts.resetAt = now + 300000; }
+  if (attempts.count >= 10) return res.status(429).json({ error: "Too many attempts. Wait five minutes and try again." });
+  attempts.count += 1; lookupAttempts.set(ip, attempts);
+  const a = Buffer.from(configuredKey); const b = Buffer.from(suppliedKey);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return res.status(401).json({ error: "Incorrect lookup key." });
+  try {
+    const sender = await getWhatsAppSender({ accountSid: env.TWILIO_ACCOUNT_SID, authToken: env.TWILIO_AUTH_TOKEN });
+    if (!sender.found) return res.status(404).json({ error: "No WhatsApp sender is registered on this Twilio account." });
+    return res.json({ phoneNumber: sender.phoneNumber, status: sender.status, online: sender.online });
+  } catch (error) {
+    console.error("WhatsApp sender lookup failed:", error.message);
+    return res.status(502).json({ error: "Could not read the WhatsApp number from Twilio. Check the Twilio credentials in Render." });
+  }
+});
 app.get("/health", (_req, res) => res.json({
   ok: true,
   service: "emzaro-deriv-telegram-bot",
   telegramConfigured: Boolean(env.TELEGRAM_BOT_TOKEN),
   ownerConfigured: Boolean(ownerChatId),
   twilioConfigured: Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN),
+  whatsappLookupConfigured: Boolean(env.WHATSAPP_LOOKUP_KEY),
   auto: state.auto
 }));
 
