@@ -34,7 +34,7 @@ The app uses Telegram long polling, so no Meta account, webhook URL, or Telegram
 
 ## Twilio WhatsApp sender discovery
 
-Add `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` to Render Environment. The private Telegram owner command `/whatsapp` queries the Twilio WhatsApp Senders API and returns the registered sender number and status. It prefers a sender with status `ONLINE`. Credentials stay server-side and are never returned by `/health`. This discovers an already registered sender; it does not purchase, register, or verify a number.
+Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and a strong private `WHATSAPP_LOOKUP_KEY` to Render Environment. Open `/whatsapp` on your service, enter the lookup key, and the page securely requests the registered sender number from the server. The private Telegram owner command `/whatsapp` queries the Twilio WhatsApp Senders API and returns the registered sender number and status. It prefers a sender with status `ONLINE`. Credentials stay server-side and are never returned by `/health`. This discovers an already registered sender; it does not purchase, register, or verify a number.
 
 ## Required credentials
 
