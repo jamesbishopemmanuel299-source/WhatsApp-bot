@@ -8,7 +8,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
-        value: "20"
+        value: "22.16.0"
       - key: DEMO_ONLY
         value: "true"
       - key: ENABLE_LIVE_TRADING
