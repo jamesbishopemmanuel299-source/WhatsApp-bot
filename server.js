@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import { DerivClient } from "./src/deriv.js";
 import { buildSignal } from "./src/strategy.js";
 import { reviewSignal } from "./src/ai.js";
+import { getWhatsAppSender } from "./src/twilio-whatsapp.js";
 
 const app = express();
 const db = new Database(process.env.DB_PATH || "bot.db");
@@ -122,11 +123,17 @@ async function handleCommand(chatId, message) {
       return `EMZARO TRADING AI\nYour Telegram chat ID is: ${chatId}\n\nAdd this number as OWNER_TELEGRAM_CHAT_ID in your Render Environment, then restart the service. Do not share your bot token.`;
     }
     if (String(chatId) !== ownerChatId) return "This trading bot is private. Your chat is not authorized.";
-    return "EMZARO TRADING AI\n\n/status — bot status\n/balance — Deriv balance\n/signal — get a market signal\n/auto on — enable demo auto trading\n/auto off — stop auto trading\n/positions — open positions\n\nAuto trading is OFF by default. Live trading is blocked unless separately enabled on the server.";
+    return "EMZARO TRADING AI\n\n/status — bot status\n/whatsapp — detect your registered Twilio WhatsApp number\n/balance — Deriv balance\n/signal — get a market signal\n/auto on — enable demo auto trading\n/auto off — stop auto trading\n/positions — open positions\n\nAuto trading is OFF by default. Live trading is blocked unless separately enabled on the server.";
   }
 
   if (!ownerChatId) return `Setup incomplete. Your Telegram chat ID is ${chatId}. Add it as OWNER_TELEGRAM_CHAT_ID in Render Environment.`;
   if (String(chatId) !== ownerChatId) return "This trading bot is private. Your chat is not authorized.";
+
+  if (command === "/whatsapp") {
+    const sender = await getWhatsAppSender({ accountSid: env.TWILIO_ACCOUNT_SID, authToken: env.TWILIO_AUTH_TOKEN });
+    if (!sender.found) return "No WhatsApp sender is registered on this Twilio account yet. Register your permanent WhatsApp Business number in Twilio, then try /whatsapp again.";
+    return "TWILIO WHATSAPP SENDER\nNumber: " + sender.phoneNumber + "\nStatus: " + sender.status + "\nAvailable: " + (sender.online ? "YES" : "NOT ONLINE YET") + "\n\nThe number is read directly from Twilio; it is not hardcoded in this app."; 
+  }
 
   if (command === "/status") {
     return `Bot: ONLINE\nAuto trading: ${state.auto ? "ON" : "OFF"}\nMode: ${env.DEMO_ONLY !== "false" ? "DEMO ONLY" : (env.ENABLE_LIVE_TRADING === "true" ? "LIVE PERMITTED BY SERVER CONFIG" : "LIVE BLOCKED")}\nDaily stake total: ${riskRow().stake_total}/${Number(env.MAX_DAILY_STAKE_RISK || 5)}\nTrades today: ${riskRow().trades}`;
@@ -164,6 +171,7 @@ app.get("/health", (_req, res) => res.json({
   service: "emzaro-deriv-telegram-bot",
   telegramConfigured: Boolean(env.TELEGRAM_BOT_TOKEN),
   ownerConfigured: Boolean(ownerChatId),
+  twilioConfigured: Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN),
   auto: state.auto
 }));
 
