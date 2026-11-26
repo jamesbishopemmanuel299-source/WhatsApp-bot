@@ -109,7 +109,8 @@ async function scanAndMaybeTrade(to, allowTrade = false) {
 }
 
 async function handleCommand(from, message) {
-  if (owner && from !== owner) return "This trading bot is private. Your number is not authorized.";
+  if (!owner) return "Bot setup incomplete: configure OWNER_WHATSAPP_NUMBER in server environment.";
+  if (from !== owner) return "This trading bot is private. Your number is not authorized.";
   const [raw, ...rest] = message.trim().split(/\s+/);
   const command = (raw || "").toLowerCase();
   if (["hi", "hello", "hey", "start", "/start", "/help", "menu"].includes(command)) {
