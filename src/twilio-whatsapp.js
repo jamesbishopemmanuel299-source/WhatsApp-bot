@@ -37,14 +37,15 @@ export async function getWhatsAppSender({ accountSid, authToken }) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const code = data.code ? " (Twilio code " + data.code + ")" : "";
+    const detail = String(data.message || data.detail || data.error || "").replace(/[\\r\\n]+/g, " ").slice(0, 350);
+    const moreInfo = String(data.more_info || data.moreInfo || "").slice(0, 180);
     if (response.status === 401) {
-      throw new Error("Twilio rejected the credentials (HTTP 401). Check that the Account SID and Auth Token are correct and belong to the same account.");
+      throw new Error("TWILIO_AUTHENTICATION_FAILED | HTTP 401" + code + (detail ? " | Twilio says: " + detail : " | Twilio rejected the Account SID/Auth Token pair.") + " Check that TWILIO_ACCOUNT_SID is the AC SID and TWILIO_AUTH_TOKEN belongs to that same account.");
     }
     if (response.status === 403) {
-      throw new Error("Twilio denied access (HTTP 403). Check account permissions and whether these credentials belong to the account holding the WhatsApp sender.");
+      throw new Error("TWILIO_PERMISSION_DENIED | HTTP 403" + code + (detail ? " | Twilio says: " + detail : " | This account is not allowed to access the sender list.") + (moreInfo ? " | More info: " + moreInfo : ""));
     }
-    const detail = String(data.message || data.detail || "").slice(0, 220);
-    throw new Error("Twilio sender lookup failed (HTTP " + response.status + ")" + code + (detail ? ": " + detail : "."));
+    throw new Error("TWILIO_API_ERROR | HTTP " + response.status + code + (detail ? " | Twilio says: " + detail : " | No error description was returned.") + (moreInfo ? " | More info: " + moreInfo : ""));
   }
 
   const senders = Array.isArray(data.senders) ? data.senders : [];
