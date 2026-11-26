@@ -13,6 +13,10 @@ services:
         value: "true"
       - key: ENABLE_LIVE_TRADING
         value: "false"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: OWNER_TELEGRAM_CHAT_ID
