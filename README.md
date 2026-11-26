@@ -32,8 +32,13 @@ The app uses Telegram long polling, so no Meta account, webhook URL, or Telegram
 4. Add a persistent disk mounted at `/opt/render/project/src/data` and set `DB_PATH=/opt/render/project/src/data/bot.db` if you want daily counters to survive restarts.
 5. Check `https://YOUR-SERVICE.onrender.com/health`. It reports whether Telegram and owner configuration are present.
 
+## Twilio WhatsApp sender discovery
+
+Add `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` to Render Environment. The private Telegram owner command `/whatsapp` queries the Twilio WhatsApp Senders API and returns the registered sender number and status. It prefers a sender with status `ONLINE`. Credentials stay server-side and are never returned by `/health`. This discovers an already registered sender; it does not purchase, register, or verify a number.
+
 ## Required credentials
 
+- Twilio WhatsApp discovery: `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.
 - Telegram: `TELEGRAM_BOT_TOKEN` and `OWNER_TELEGRAM_CHAT_ID`.
 - Groq: `GROQ_API_KEY`.
 - Deriv: trade-scoped Personal Access Token, account ID, and App ID for PAT authentication.
