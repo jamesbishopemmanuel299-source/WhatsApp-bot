@@ -55,7 +55,7 @@ async function sendWhatsApp(to, body) {
 }
 function derivClient() {
   if (!env.DERIV_ACCESS_TOKEN || !env.DERIV_ACCOUNT_ID) throw new Error("Deriv is not configured. Add DERIV_ACCESS_TOKEN and DERIV_ACCOUNT_ID to server environment.");
-  return new DerivClient({ token: env.DERIV_ACCESS_TOKEN, appId: env.DERIV_APP_ID, accountId: env.DERIV_ACCOUNT_ID });
+  return new DerivClient({ token: env.DERIV_ACCESS_TOKEN, appId: env.DERIV_APP_ID, accountId: env.DERIV_ACCOUNT_ID, demoOnly: env.DEMO_ONLY !== "false", liveEnabled: env.ENABLE_LIVE_TRADING === "true" });
 }
 function formatSignal(s, symbol) {
   return `EMZARO TRADING AI\nMarket: ${symbol}\nSignal: ${s.action}\nConfidence: ${Math.round((s.confidence || 0) * 100)}%\nRSI: ${s.rsi?.toFixed?.(1) ?? "n/a"}\nReason: ${s.reason}\n\nSignals are not guarantees. Check the market and risk before trading.`;
@@ -80,7 +80,7 @@ async function scanAndMaybeTrade(to, allowTrade = false) {
         const stake = Number(env.DEFAULT_STAKE || 1);
         const maxStake = Number(env.MAX_STAKE || 2);
         const maxTrades = Number(env.MAX_TRADES_PER_DAY || 5);
-        const dailyRisk = Number(env.MAX_DAILY_LOSS || 5);
+        const dailyRisk = Number(env.MAX_DAILY_STAKE_RISK || 5);
         const maxOpen = Number(env.MAX_OPEN_TRADES || 1);
         if (!env.GROQ_API_KEY) throw new Error("GROQ_API_KEY is required before auto trading.");
         if (stake <= 0 || stake > maxStake) throw new Error("Configured stake exceeds MAX_STAKE.");
@@ -116,7 +116,7 @@ async function handleCommand(from, message) {
     return "EMZARO TRADING AI\n\n/status — bot status\n/balance — Deriv balance\n/signal — get a market signal\n/auto on — enable demo auto trading\n/auto off — stop auto trading\n/positions — open positions\n\nAuto trading is OFF by default. Live trading is blocked unless separately enabled on the server.";
   }
   if (command === "/status") {
-    return `Bot: ONLINE\nAuto trading: ${state.auto ? "ON" : "OFF"}\nMode: ${env.DEMO_ONLY !== "false" ? "DEMO ONLY" : (env.ENABLE_LIVE_TRADING === "true" ? "LIVE PERMITTED BY SERVER CONFIG" : "LIVE BLOCKED")}\nDaily risk: ${riskRow().stake_total}/${Number(env.MAX_DAILY_LOSS || 5)}\nTrades today: ${riskRow().trades}`;
+    return `Bot: ONLINE\nAuto trading: ${state.auto ? "ON" : "OFF"}\nMode: ${env.DEMO_ONLY !== "false" ? "DEMO ONLY" : (env.ENABLE_LIVE_TRADING === "true" ? "LIVE PERMITTED BY SERVER CONFIG" : "LIVE BLOCKED")}\nDaily risk: ${riskRow().stake_total}/${Number(env.MAX_DAILY_STAKE_RISK || 5)}\nTrades today: ${riskRow().trades}`;
   }
   if (command === "/signal") return scanAndMaybeTrade(from, false);
   if (command === "/auto") {
